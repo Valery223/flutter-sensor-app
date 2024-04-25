@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "454418983603",
+    "project_id": "mobile-sensors-8d2ec",
+    "storage_bucket": "mobile-sensors-8d2ec.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:454418983603:android:408bed17f584d3e5965ec6",
+        "android_client_info": {
+          "package_name": "com.example.flatter_app_android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANcT9R4e-A0HFOUR2YMmomK-An8y_s3rQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
