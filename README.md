@@ -1,16 +1,26 @@
-# flatter_app_android
+# Flutter Sensor Data Collector
 
-A new Flutter project.
+Проект Flutter Sensor Data Collector представляет собой мобильное приложение, разработанное на Flutter, которое собирает данные с встроенных сенсоров устройства, таких как акселерометр, гироскоп и магнитометр. Приложение также включает функциональность определения геолокации пользователя с использованием GPS.
 
-## Getting Started
+## Основные функции:
 
-This project is a starting point for a Flutter application.
+- **Сбор данных с сенсоров**: Отслеживание данных акселерометра, гироскопа и магнитометра в реальном времени.
 
-A few resources to get you started if this is your first Flutter project:
+- **Определение геолокации**: Получение текущих координат пользователя с использованием GPS.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Сохранение данных**: Автоматическое сохранение собранных данных в базе данных для последующего анализа или использования в исследовательских целях.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Технологии:
+
+- **Flutter**: Кроссплатформенный фреймворк для разработки мобильных приложений.
+
+- **Firebase**: Используется для хранения и управления данными сенсоров и геолокации.
+
+- **Geolocator и Sensors пакеты**: Для работы с геолокацией и сенсорами устройства соответственно.
+
+## Установка и использование:
+
+Для установки приложения на мобильное устройство выполните следующие шаги:
+
+1. Клонирование репозитория:
+   git clone https://github.com/yourusername/flutter-sensor-data-collector.git
