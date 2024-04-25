@@ -24,3 +24,8 @@
 
 1. Клонирование репозитория:
    git clone https://github.com/yourusername/flutter-sensor-data-collector.git
+2. Коннект девайса(Должны быть в одной сети) (либо использовать имуляторы):
+   adb.exe connect "ip:port"
+3. Запуск приложения:
+   flutter run
+   

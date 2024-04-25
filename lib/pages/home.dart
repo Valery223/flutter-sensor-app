@@ -62,6 +62,7 @@ class _HomeState extends State<Home> {
               Text('Gyroscope: ', style: theme.textTheme.bodyMedium),
               Text('Latitude: ', style: theme.textTheme.bodyMedium),
               Text('Longitude: ', style: theme.textTheme.bodyMedium),
+              Text('Speed: ', style: theme.textTheme.bodyMedium),
             ],
           ),
           Column(
@@ -71,6 +72,7 @@ class _HomeState extends State<Home> {
               Text(_gyroscopeEvent?.x.toStringAsFixed(1) ?? '?'),
               Text('${_currentPosition?.latitude ?? 'N/A'}', style: theme.textTheme.bodyLarge),
               Text('${_currentPosition?.longitude ?? 'N/A'}', style: theme.textTheme.bodyLarge),
+              Text('${_currentPosition?.speed ?? 'N/A'}', style: theme.textTheme.bodyLarge),
             ]
           ),
           Column(
@@ -107,7 +109,7 @@ class _HomeState extends State<Home> {
           _accelerometerLastUpdateTime = _accelerometerUpdateTime;
 
           if (user != null) {
-            FirebaseFirestore.instance.collection('test_sensors2').add({
+            FirebaseFirestore.instance.collection('sensors').add({
               'accelerometer': [user.email, event.x, event.y, event.z, _accelerometerLastUpdateTime!.hour, _accelerometerLastUpdateTime!.minute]
             });
           } else {
@@ -131,9 +133,14 @@ class _HomeState extends State<Home> {
         if (_gyroscopeLastUpdateTime == null || _gyroscopeUpdateTime!.difference(_gyroscopeLastUpdateTime!) > sensorInterval) {
           _gyroscopeLastUpdateTime = _gyroscopeUpdateTime;
 
-          FirebaseFirestore.instance.collection('test_sensors').add({
-            'gyroscope': [event.x, event.y, event.z, _gyroscopeLastUpdateTime!.hour, _gyroscopeLastUpdateTime!.minute]
-          });
+          if (user != null) {
+            FirebaseFirestore.instance.collection('sensors').add({
+              'gyroscope': [user.email, event.x, event.y, event.z, _gyroscopeLastUpdateTime!.hour, _gyroscopeLastUpdateTime!.minute, _gyroscopeUpdateTime!.second]
+            });
+          } else {
+            print("Error: user dont find");
+          }
+
         }
       }),
     );
@@ -152,12 +159,49 @@ class _HomeState extends State<Home> {
         if (_magnetometerLastUpdateTime == null || _magnetometerUpdateTime!.difference(_magnetometerLastUpdateTime!) > sensorInterval) {
           _magnetometerLastUpdateTime = _magnetometerUpdateTime;
 
-          FirebaseFirestore.instance.collection('test_sensors').add({
-            'magnetometer': [event.x, event.y, event.z, _magnetometerLastUpdateTime!.hour, _magnetometerLastUpdateTime!.minute]
-          });
+          if (user != null) {
+            FirebaseFirestore.instance.collection('sensors').add({
+              'magnetometer': [user.email, event.x, event.y, event.z, _magnetometerLastUpdateTime!.hour, _magnetometerLastUpdateTime!.minute,_magnetometerLastUpdateTime!.second ]
+            });
+          } else {
+            print("Error: user dont find");
+          }
         }
       }),
     );
+
+    _streamSubscriptions.add(
+        Geolocator.getPositionStream().listen((Position position) {
+          final now = DateTime.now();
+
+          if (mounted) {
+            setState(() {
+              _currentPosition = position;
+            });
+          }
+
+          if (_currentPosition != null) {
+            if (user != null) {
+              FirebaseFirestore.instance.collection('sensors').add({
+                'gps': [
+                  user.email,
+                  _currentPosition!.latitude,
+                  _currentPosition!.longitude,
+                  _currentPosition!.speed,
+                  now.hour,
+                  now.minute,
+                  now.second
+                ]
+              });
+            } else {
+              print("Error: user not found");
+            }
+          }
+        }),
+    );
+
+
+
   }
 
 // ...
