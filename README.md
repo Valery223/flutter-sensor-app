@@ -23,9 +23,12 @@
 Для установки приложения на мобильное устройство выполните следующие шаги:
 
 1. Клонирование репозитория:
-   git clone https://github.com/yourusername/flutter-sensor-data-collector.git
+   `git clone https://github.com/Valery223/flutter-sensor-app.git`
 2. Коннект девайса(Должны быть в одной сети) (либо использовать имуляторы):
    adb.exe connect "ip:port"
 3. Запуск приложения:
    flutter run
    
+## Дополнительные команды для сборки:
+- Сборка APK файла:
+  `flutter build apk`
