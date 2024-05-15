@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:geolocator/geolocator.dart';
+import '../button.dart';
 import '../domain/user.dart';
+import 'package:intl/intl.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -15,217 +17,212 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  //static const Duration _ignoreDuration = Duration(milliseconds: 20);
+  Duration sensorInterval = const Duration(seconds: 30);
+  late Timer? _timer;
+
+  late StreamSubscription<dynamic> _accelerometerSubscription;
+  late StreamSubscription<dynamic> _gyroscopeSubscription;
+  late StreamSubscription<dynamic> _magnetometerSubscription;
+  late StreamSubscription<Position> _positionSubscription;
 
   AccelerometerEvent? _accelerometerEvent;
   GyroscopeEvent? _gyroscopeEvent;
   MagnetometerEvent? _magnetometerEvent;
 
-  double _speed = 0.0;
   Position? _currentPosition;
-
-  DateTime? _accelerometerUpdateTime;
-  DateTime? _gyroscopeUpdateTime;
-  DateTime? _magnetometerUpdateTime;
-
-  DateTime? _accelerometerLastUpdateTime;
-  DateTime? _gyroscopeLastUpdateTime;
-  DateTime? _magnetometerLastUpdateTime;
-
-
-  final _streamSubscriptions = <StreamSubscription<dynamic>>[];
-
-  Duration sensorInterval = const Duration(seconds: 30);
 
 
   @override
+  void initState() {
+    super.initState();
+
+    initLocation();
+  }
+
+  Future<void> initLocation() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      return;
+    }
+  }
+
+  void initSensorsSubscription() {
+    _accelerometerSubscription =
+        accelerometerEventStream(samplingPeriod: sensorInterval).listen((
+            AccelerometerEvent event) {
+          // Логика обработки событий акселерометра
+          setState(() {
+            _accelerometerEvent = event;
+            // _accelerometerUpdateTime = now;
+          });
+
+          // Отправка данных в Firestore
+          // sendDataToFirestore('sensors', {
+          //   'accelerometer': [event.x, event.y, event.z],
+          // });
+        });
+
+    _gyroscopeSubscription =
+        gyroscopeEventStream(samplingPeriod: sensorInterval).listen((
+            GyroscopeEvent event) {
+          // Логика обработки событий акселерометра
+          setState(() {
+            _gyroscopeEvent = event;
+            // _accelerometerUpdateTime = now;
+          });
+
+          // Отправка данных в Firestore
+          // sendDataToFirestore('sensors', {
+          //   'accelerometer': [event.x, event.y, event.z],
+          // });
+
+        });
+
+    _magnetometerSubscription =
+        magnetometerEventStream(samplingPeriod: sensorInterval).listen((
+            MagnetometerEvent event) {
+          // Логика обработки событий акселерометра
+          setState(() {
+            _magnetometerEvent = event;
+            // _accelerometerUpdateTime = now;
+          });
+
+        });
+
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      // distanceFilter: 10,
+      // timeLimit:
+    );
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings)
+            .listen((Position position) {
+          setState(() {
+            _currentPosition = position;
+          });
+        });
+  }
+
+  void cancelSensorsSubscription() {
+    _accelerometerSubscription.cancel();
+    _gyroscopeSubscription.cancel();
+    _magnetometerSubscription.cancel();
+    _positionSubscription.cancel();
+
+    setState(() {
+      _accelerometerEvent = null;
+      _gyroscopeEvent = null;
+      _magnetometerEvent = null;
+      _currentPosition = null;
+    });
+  }
+
+  void startRecording() {
+    // Можно сделать проверку на null
+    // Запуск записи данных в базу данных
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      DateTime now = DateTime.now();
+      String formattedTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(now); // Форматирование времени
+      sendDataToFirestore('recordings', {
+        'accelerometer': [_accelerometerEvent?.x, _accelerometerEvent?.y, _accelerometerEvent?.z],
+        'gyroscope': [_gyroscopeEvent?.x, _gyroscopeEvent?.y, _gyroscopeEvent?.z],
+        'magnetometer': [_magnetometerEvent?.x, _magnetometerEvent?.y, _magnetometerEvent?.z],
+        'latitude': _currentPosition?.latitude,
+        'longitude': _currentPosition?.longitude,
+        'speed': _currentPosition?.speed,
+        'timestamp': formattedTime, // Добавление времени в данные
+      });
+    });
+  }
+
+  void stopRecording() {
+    _timer?.cancel(); // Остановка таймера
+  }
+
+  void sendDataToFirestore(String collectionName, Map<String, dynamic> data) {
+    FirebaseFirestore.instance.collection(collectionName).add(data);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    MyUser user = Provider.of<MyUser>(context);
     final theme = Theme.of(context);
+    const String naText = 'N/A';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
         actions: [
           TextButton.icon(
-              onPressed: (){
+              onPressed: () {
                 AuthService().logOut();
-              }, icon: const Icon(Icons.supervised_user_circle, color: Colors.white,),
+              },
+              icon: const Icon(
+                Icons.supervised_user_circle, color: Colors.white,),
               label: const SizedBox.shrink())
         ],
       ),
-      body: Row(
+      body: Column(
         children: [
-
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text("Accelerometer: ", style: theme.textTheme.bodyMedium),
-              Text('Gyroscope: ', style: theme.textTheme.bodyMedium),
-              Text('Latitude: ', style: theme.textTheme.bodyMedium),
-              Text('Longitude: ', style: theme.textTheme.bodyMedium),
-              Text('Speed: ', style: theme.textTheme.bodyMedium),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Accelerometer: ", style: theme.textTheme.bodyMedium),
+                  Text('Gyroscope: ', style: theme.textTheme.bodyMedium),
+                  Text('Magnitometr: ', style: theme.textTheme.bodyMedium),
+                  Text('Latitude: ', style: theme.textTheme.bodyMedium),
+                  Text('Longitude: ', style: theme.textTheme.bodyMedium),
+                  Text('Speed: ', style: theme.textTheme.bodyMedium),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_accelerometerEvent?.x.toStringAsFixed(1) ?? naText),
+                  Text(_gyroscopeEvent?.x.toStringAsFixed(1) ?? naText),
+                  Text(_magnetometerEvent?.x.toStringAsFixed(1) ?? naText),
+                  Text('${_currentPosition?.latitude ?? naText}',
+                      style: theme.textTheme.bodyLarge),
+                  Text('${_currentPosition?.longitude ?? naText}',
+                      style: theme.textTheme.bodyLarge),
+                  Text('${_currentPosition?.speed ?? naText}',
+                      style: theme.textTheme.bodyLarge),
+                ],
+              ),
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_accelerometerEvent?.x.toStringAsFixed(1) ?? '?'),
-              Text(_gyroscopeEvent?.x.toStringAsFixed(1) ?? '?'),
-              Text('${_currentPosition?.latitude ?? 'N/A'}', style: theme.textTheme.bodyLarge),
-              Text('${_currentPosition?.longitude ?? 'N/A'}', style: theme.textTheme.bodyLarge),
-              Text('${_currentPosition?.speed ?? 'N/A'}', style: theme.textTheme.bodyLarge),
-            ]
+          ToggleButtonWidget(
+            onPressedFunction1: () {
+              debugPrint("sensors: on");
+              initSensorsSubscription();
+            },
+            onPressedFunction2: () {
+              debugPrint("sensors: off");
+              cancelSensorsSubscription();
+            },
+            text1: "Включить сенсоры",
+            text2: "Выключить сенсоры",
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${_accelerometerUpdateTime?.second ?? 'N/A'} Sec'),
-              Text('${_gyroscopeUpdateTime?.second ?? 'N/A'} Sec'),
-            ],
-          ),
+          ToggleButtonWidget(
+            onPressedFunction1: () {
+              debugPrint("record: on");
+              startRecording();
+            },
+            onPressedFunction2: () {
+              debugPrint("record: off");
+              stopRecording();
+            },
+            text1: "Включить запись",
+            text2: "Выключить запись",
+          )
         ],
-      ),);
+      ),
+    );
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    MyUser? user = Provider.of<MyUser?>(context);
-
-    _initLocation();
-
-    _streamSubscriptions.add(
-      accelerometerEventStream().listen((AccelerometerEvent event) {
-        final now = DateTime.now();
-
-        if (mounted) {
-          setState(() {
-            _accelerometerEvent = event;
-            _accelerometerUpdateTime = now;
-          });
-        }
-
-        if (_accelerometerLastUpdateTime == null || _accelerometerUpdateTime!.difference(_accelerometerLastUpdateTime!) > sensorInterval) {
-          _accelerometerLastUpdateTime = _accelerometerUpdateTime;
-
-          if (user != null) {
-            FirebaseFirestore.instance.collection('sensors').add({
-              'accelerometer': [user.email, event.x, event.y, event.z, _accelerometerLastUpdateTime!.hour, _accelerometerLastUpdateTime!.minute]
-            });
-          } else {
-            print("Error: user dont find");
-          }
-        }
-      }),
-    );
-
-    _streamSubscriptions.add(
-      gyroscopeEventStream(samplingPeriod: sensorInterval).listen((GyroscopeEvent event) {
-        final now = DateTime.now();
-
-        if (mounted) {
-          setState(() {
-            _gyroscopeEvent = event;
-            _gyroscopeUpdateTime = now;
-          });
-        }
-
-        if (_gyroscopeLastUpdateTime == null || _gyroscopeUpdateTime!.difference(_gyroscopeLastUpdateTime!) > sensorInterval) {
-          _gyroscopeLastUpdateTime = _gyroscopeUpdateTime;
-
-          if (user != null) {
-            FirebaseFirestore.instance.collection('sensors').add({
-              'gyroscope': [user.email, event.x, event.y, event.z, _gyroscopeLastUpdateTime!.hour, _gyroscopeLastUpdateTime!.minute, _gyroscopeUpdateTime!.second]
-            });
-          } else {
-            print("Error: user dont find");
-          }
-
-        }
-      }),
-    );
-
-    _streamSubscriptions.add(
-      magnetometerEventStream(samplingPeriod: sensorInterval).listen((MagnetometerEvent event) {
-        final now = DateTime.now();
-
-        if (mounted) {
-          setState(() {
-            _magnetometerEvent = event;
-            _magnetometerUpdateTime = now;
-          });
-        }
-
-        if (_magnetometerLastUpdateTime == null || _magnetometerUpdateTime!.difference(_magnetometerLastUpdateTime!) > sensorInterval) {
-          _magnetometerLastUpdateTime = _magnetometerUpdateTime;
-
-          if (user != null) {
-            FirebaseFirestore.instance.collection('sensors').add({
-              'magnetometer': [user.email, event.x, event.y, event.z, _magnetometerLastUpdateTime!.hour, _magnetometerLastUpdateTime!.minute,_magnetometerLastUpdateTime!.second ]
-            });
-          } else {
-            print("Error: user dont find");
-          }
-        }
-      }),
-    );
-
-    _streamSubscriptions.add(
-        Geolocator.getPositionStream().listen((Position position) {
-          final now = DateTime.now();
-
-          if (mounted) {
-            setState(() {
-              _currentPosition = position;
-            });
-          }
-
-          if (_currentPosition != null) {
-            if (user != null) {
-              FirebaseFirestore.instance.collection('sensors').add({
-                'gps': [
-                  user.email,
-                  _currentPosition!.latitude,
-                  _currentPosition!.longitude,
-                  _currentPosition!.speed,
-                  now.hour,
-                  now.minute,
-                  now.second
-                ]
-              });
-            } else {
-              print("Error: user not found");
-            }
-          }
-        }),
-    );
-
-
-
-  }
-
-// ...
-
-  Future<void> _initLocation() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      return;
-    }
-
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.best,
-    );
-
-    if (mounted) {
-      setState(() {
-        _currentPosition = position;
-        if (position.speed != null) {
-          _speed = position.speed!;
-        }
-      });
-    }
-
-  }
 }
+
 
 
