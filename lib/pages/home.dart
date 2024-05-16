@@ -8,6 +8,10 @@ import 'package:geolocator/geolocator.dart';
 import '../button.dart';
 import '../domain/user.dart';
 import 'package:intl/intl.dart';
+import 'package:camera/camera.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -24,6 +28,7 @@ class _HomeState extends State<Home> {
   late StreamSubscription<dynamic> _gyroscopeSubscription;
   late StreamSubscription<dynamic> _magnetometerSubscription;
   late StreamSubscription<Position> _positionSubscription;
+  late CameraController _controller;
 
   AccelerometerEvent? _accelerometerEvent;
   GyroscopeEvent? _gyroscopeEvent;
@@ -37,7 +42,25 @@ class _HomeState extends State<Home> {
     super.initState();
 
     initLocation();
+    _initializeCamera();
   }
+
+  void _initializeCamera() async {
+    final cameras = await availableCameras();
+    final firstCamera = cameras.first;
+    _controller = CameraController(
+      firstCamera,
+      ResolutionPreset.medium,
+    );
+    await _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
 
   Future<void> initLocation() async {
     LocationPermission permission = await Geolocator.requestPermission();
@@ -116,24 +139,63 @@ class _HomeState extends State<Home> {
       _currentPosition = null;
     });
   }
+  //
+  // void startRecording() {
+  //   // Можно сделать проверку на null
+  //   // Запуск записи данных в базу данных
+  //   _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+  //     DateTime now = DateTime.now();
+  //     String formattedTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(now); // Форматирование времени
+  //     sendDataToFirestore('recordings', {
+  //       'accelerometer': [_accelerometerEvent?.x, _accelerometerEvent?.y, _accelerometerEvent?.z],
+  //       'gyroscope': [_gyroscopeEvent?.x, _gyroscopeEvent?.y, _gyroscopeEvent?.z],
+  //       'magnetometer': [_magnetometerEvent?.x, _magnetometerEvent?.y, _magnetometerEvent?.z],
+  //       'latitude': _currentPosition?.latitude,
+  //       'longitude': _currentPosition?.longitude,
+  //       'speed': _currentPosition?.speed,
+  //       'timestamp': formattedTime, // Добавление времени в данные
+  //     });
+  //   });
+  // }
 
   void startRecording() {
-    // Можно сделать проверку на null
-    // Запуск записи данных в базу данных
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
       DateTime now = DateTime.now();
-      String formattedTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(now); // Форматирование времени
-      sendDataToFirestore('recordings', {
+      String formattedTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+      print("Запись!!!!!\n");
+      final data = {
         'accelerometer': [_accelerometerEvent?.x, _accelerometerEvent?.y, _accelerometerEvent?.z],
         'gyroscope': [_gyroscopeEvent?.x, _gyroscopeEvent?.y, _gyroscopeEvent?.z],
         'magnetometer': [_magnetometerEvent?.x, _magnetometerEvent?.y, _magnetometerEvent?.z],
         'latitude': _currentPosition?.latitude,
         'longitude': _currentPosition?.longitude,
         'speed': _currentPosition?.speed,
-        'timestamp': formattedTime, // Добавление времени в данные
-      });
+        'timestamp': formattedTime,
+      };
+
+      await saveDataToFile('recordings.json', data);
     });
   }
+
+  Future<void> saveDataToFile(String fileName, Map<String, dynamic> data) async {
+    final directory = await getDownloadsDirectory();
+    //final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory?.path}/$fileName');
+
+    try {
+      if (!await file.exists()) {
+        await file.create(recursive: true);
+      }
+
+      final encodedData = json.encode(data);
+      await file.writeAsString(encodedData, mode: FileMode.append);
+
+      print('Файл успешно сохранен: ${file.path}');
+    } catch (e) {
+      print('Ошибка сохранения данных в файл: $e');
+    }
+  }
+
 
   void stopRecording() {
     _timer?.cancel(); // Остановка таймера
